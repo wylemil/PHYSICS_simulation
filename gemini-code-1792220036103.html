@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Physics Simulation: Wave Speed vs Frequency</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --accent-a: #38bdf8;
+      --accent-b: #f43f5e;
+      --text: #f8fafc;
+      --subtext: #94a3b8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    h1 { font-size: 1.8rem; margin-bottom: 8px; color: #e2e8f0; }
+    p.subtitle { color: var(--subtext); font-size: 0.95rem; }
+
+    .main-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      width: 100%;
+      max-width: 960px;
+    }
+
+    canvas {
+      background-color: #020617;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+      width: 100%;
+      height: auto;
+    }
+
+    .controls-panel {
+      background-color: var(--card-bg);
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .control-group.wave-a { border-left: 4px solid var(--accent-a); padding-left: 12px; }
+    .control-group.wave-b { border-left: 4px solid var(--accent-b); padding-left: 12px; }
+
+    label {
+      font-size: 0.9rem;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #38bdf8;
+      cursor: pointer;
+    }
+
+    .btn-group {
+      grid-column: 1 / -1;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 10px;
+    }
+
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover { background: #2563eb; }
+    button.secondary { background: #475569; }
+    button.secondary:hover { background: #334155; }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      color: var(--subtext);
+    }
+
+    .info-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 10px;
+      grid-column: 1 / -1;
+    }
+
+    .card {
+      background: #0f172a;
+      padding: 12px 16px;
+      border-radius: 8px;
+      border: 1px solid #1e293b;
+      font-family: monospace;
+      font-size: 0.9rem;
+    }
+    .card-title { font-weight: bold; margin-bottom: 4px; font-family: sans-serif; }
+    .card-a { color: var(--accent-a); }
+    .card-b { color: var(--accent-b); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Wave Speed ($v = f \lambda$) Demonstration</h1>
+    <p classsubtitle">Observe how two waves with different frequencies travel at the <i>exact same speed</i> in the same medium.</p>
+  </header>
+
+  <div class="main-container">
+    <canvas id="waveCanvas" width="900" height="420"></canvas>
+
+    <div class="controls-panel">
+      <!-- Shared Controls -->
+      <div class="control-group">
+        <label for="speedSlider">
+          Shared Wave Speed ($v$): <span id="speedVal">200</span> px/s
+        </label>
+        <input type="range" id="speedSlider" min="50" max="400" value="200" step="10">
+
+        <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+          <label class="checkbox-label">
+            <input type="checkbox" id="chkCrestTrackers" checked>
+            Show Crest Tracker Lines (Proves identical horizontal speed)
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="chkParticles" checked>
+            Show Medium Particles (Vertical Simple Harmonic Motion)
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="chkWavelengths" checked>
+            Show Wavelength Markers ($\lambda$)
+          </label>
+        </div>
+      </div>
+
+      <!-- Wave A Controls -->
+      <div class="control-group wave-a">
+        <label for="freqASlider" style="color: var(--accent-a);">
+          Wave A Frequency ($f_1$): <span id="freqAVal">1.0</span> Hz
+        </label>
+        <input type="range" id="freqASlider" min="0.4" max="3.0" value="1.0" step="0.1">
+      </div>
+
+      <!-- Wave B Controls -->
+      <div class="control-group wave-b">
+        <label for="freqBSlider" style="color: var(--accent-b);">
+          Wave B Frequency ($f_2$): <span id="freqBVal">2.0</span> Hz
+        </label>
+        <input type="range" id="freqBSlider" min="0.4" max="3.0" value="2.0" step="0.1">
+      </div>
+
+      <!-- Readout Cards -->
+      <div class="info-cards">
+        <div class="card card-a">
+          <div class="card-title">Wave A (Low Frequency)</div>
+          <div>f₁ = <span id="f1Out">1.0</span> Hz</div>
+          <div>λ₁ = <span id="l1Out">200</span> px</div>
+          <div>v₁ = f₁ × λ₁ = <span id="v1Out">200</span> px/s</div>
+        </div>
+        <div class="card card-b">
+          <div class="card-title">Wave B (High Frequency)</div>
+          <div>f₂ = <span id="f2Out">2.0</span> Hz</div>
+          <div>λ₂ = <span id="l2Out">100</span> px</div>
+          <div>v₂ = f₂ × λ₂ = <span id="v2Out">200</span> px/s</div>
+        </div>
+      </div>
+
+      <!-- Buttons -->
+      <div class="btn-group">
+        <button id="btnPlayPause">Pause</button>
+        <button id="btnReset" class="secondary">Reset Pulse Tracker</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('waveCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Controls
+    const speedSlider = document.getElementById('speedSlider');
+    const freqASlider = document.getElementById('freqASlider');
+    const freqBSlider = document.getElementById('freqBSlider');
+
+    const chkCrestTrackers = document.getElementById('chkCrestTrackers');
+    const chkParticles = document.getElementById('chkParticles');
+    const chkWavelengths = document.getElementById('chkWavelengths');
+
+    const btnPlayPause = document.getElementById('btnPlayPause');
+    const btnReset = document.getElementById('btnReset');
+
+    // State
+    let isPlaying = true;
+    let lastTime = 0;
+    let waveTime = 0;
+
+    let v = parseFloat(speedSlider.value);
+    let f1 = parseFloat(freqASlider.value);
+    let f2 = parseFloat(freqBSlider.value);
+    let amp = 45; // amplitude in pixels
+
+    // Sync Readouts
+    function updateReadouts() {
+      v = parseFloat(speedSlider.value);
+      f1 = parseFloat(freqASlider.value);
+      f2 = parseFloat(freqBSlider.value);
+
+      const lambda1 = v / f1;
+      const lambda2 = v / f2;
+
+      document.getElementById('speedVal').textContent = v;
+      document.getElementById('freqAVal').textContent = f1.toFixed(1);
+      document.getElementById('freqBVal').textContent = f2.toFixed(1);
+
+      document.getElementById('f1Out').textContent = f1.toFixed(1);
+      document.getElementById('l1Out').textContent = Math.round(lambda1);
+      document.getElementById('v1Out').textContent = Math.round(f1 * lambda1);
+
+      document.getElementById('f2Out').textContent = f2.toFixed(1);
+      document.getElementById('l2Out').textContent = Math.round(lambda2);
+      document.getElementById('v2Out').textContent = Math.round(f2 * lambda2);
+    }
+
+    speedSlider.addEventListener('input', updateReadouts);
+    freqASlider.addEventListener('input', updateReadouts);
+    freqBSlider.addEventListener('input', updateReadouts);
+    updateReadouts();
+
+    btnPlayPause.addEventListener('click', () => {
+      isPlaying = !isPlaying;
+      btnPlayPause.textContent = isPlaying ? "Pause" : "Play";
+    });
+
+    btnReset.addEventListener('click', () => {
+      waveTime = 0;
+    });
+
+    // Drawing Functions
+    function drawGrid() {
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+
+      // Vertical grid lines
+      for (let x = 0; x < canvas.width; x += 50) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+
+      // Centerlines for Wave A and Wave B
+      ctx.strokeStyle = '#334155';
+      ctx.setLineDash([5, 5]);
+
+      ctx.beginPath();
+      ctx.moveTo(0, 110);
+      ctx.lineTo(canvas.width, 110);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(0, 310);
+      ctx.lineTo(canvas.width, 310);
+      ctx.stroke();
+
+      ctx.setLineDash([]);
+    }
+
+    function drawWave(cy, f, color, labelText) {
+      const lambda = v / f;
+      const k = (2 * Math.PI) / lambda;
+
+      ctx.beginPath();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3.5;
+
+      for (let x = 0; x <= canvas.width; x++) {
+        const y = cy - amp * Math.sin(k * (x - v * waveTime));
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Label
+      ctx.fillStyle = color;
+      ctx.font = 'bold 14px sans-serif';
+      ctx.fillText(labelText, 15, cy - 65);
+
+      // Medium Particles (oscillating vertical dots)
+      if (chkParticles.checked) {
+        ctx.fillStyle = '#f8fafc';
+        for (let x = 100; x < canvas.width; x += 120) {
+          const y = cy - amp * Math.sin(k * (x - v * waveTime));
+          
+          // Vertical motion path guide line
+          ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x, cy - amp);
+          ctx.lineTo(x, cy + amp);
+          ctx.stroke();
+
+          // Particle
+          ctx.beginPath();
+          ctx.arc(x, y, 6, 0, Math.PI * 2);
+          ctx.fillStyle = color;
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+      }
+
+      // Wavelength Marker
+      if (chkWavelengths.checked) {
+        const xStart = 200;
+        const xEnd = xStart + lambda;
+        const yMark = cy + amp + 20;
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(xStart, yMark);
+        ctx.lineTo(xEnd, yMark);
+        // Arrows
+        ctx.moveTo(xStart + 6, yMark - 4); ctx.lineTo(xStart, yMark); ctx.lineTo(xStart + 6, yMark + 4);
+        ctx.moveTo(xEnd - 6, yMark - 4); ctx.lineTo(xEnd, yMark); ctx.lineTo(xEnd - 6, yMark + 4);
+        ctx.stroke();
+
+        ctx.fillStyle = color;
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`λ = ${Math.round(lambda)} px`, (xStart + xEnd) / 2, yMark + 15);
+        ctx.textAlign = 'left';
+      }
+    }
+
+    function drawCrestTrackers() {
+      if (!chkCrestTrackers.checked) return;
+
+      const cyA = 110;
+      const cyB = 310;
+
+      const lambdaA = v / f1;
+      const lambdaB = v / f2;
+
+      // Track a wave crest moving across the screen
+      // Phase condition for crest: k * (x - v * t) = PI/2 + 2*PI*n => x = v*t + (n + 1/4)*lambda
+      // We pick the crest that started near x=0 at t=0
+      let trackerX = (v * waveTime) % canvas.width;
+
+      // Draw vertical tracker line across both channels
+      ctx.strokeStyle = '#facc15'; // Bright yellow
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
+
+      ctx.beginPath();
+      ctx.moveTo(trackerX, 20);
+      ctx.lineTo(trackerX, canvas.height - 20);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Draw glowing indicator crest dots
+      const yA = cyA - amp * Math.sin((2 * Math.PI / lambdaA) * (trackerX - v * waveTime));
+      const yB = cyB - amp * Math.sin((2 * Math.PI / lambdaB) * (trackerX - v * waveTime));
+
+      [ {x: trackerX, y: yA}, {x: trackerX, y: yB} ].forEach(pt => {
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 8, 0, Math.PI * 2);
+        ctx.fillStyle = '#facc15';
+        ctx.fill();
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      });
+
+      // Banner badge
+      ctx.fillStyle = '#facc15';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText(`Crest Speed v = ${v} px/s`, trackerX + 8, 35);
+    }
+
+    // Animation Loop
+    function animate(timestamp) {
+      if (!lastTime) lastTime = timestamp;
+      const dt = (timestamp - lastTime) / 1000;
+      lastTime = timestamp;
+
+      if (isPlaying) {
+        waveTime += dt;
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      drawGrid();
+      drawWave(110, f1, '#38bdf8', 'WAVE A (Low Frequency f₁)');
+      drawWave(310, f2, '#f43f5e', 'WAVE B (High Frequency f₂)');
+      drawCrestTrackers();
+
+      requestAnimationFrame(animate);
+    }
+
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
